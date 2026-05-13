@@ -699,4 +699,4 @@ php artisan view:cache
 
 ---
 
-**Built with ❤️ by the StaySync Development Team**
+**Built with ❤️ by Alligator Mississipiensis**
