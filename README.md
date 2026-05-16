@@ -1,400 +1,3 @@
-# 🏨 StaySync — Hotel Management System
-
-**StaySync** is a unified, modern Hotel Management System (HMS) designed for independent hotels and boutique resorts. It centralizes bookings, front-desk operations, housekeeping, billing/POS, guest communications, and reporting—all in one seamless platform.
-
----
-
-## 📋 Table of Contents
-
-- [Features](#features)
-- [Tech Stack](#tech-stack)
-- [Getting Started](#getting-started)
-  - [Prerequisites](#prerequisites)
-  - [Installation](#installation)
-  - [Database Setup](#database-setup)
-  - [Running the Application](#running-the-application)
-- [Project Structure](#project-structure)
-- [Core Modules](#core-modules)
-- [API Documentation](#api-documentation)
-- [Architecture](#architecture)
-  - [Database Schema](#database-schema)
-  - [Key Design Patterns](#key-design-patterns)
-- [Development Workflow](#development-workflow)
-- [Deployment](#deployment)
-- [Team Roles & Responsibilities](#team-roles--responsibilities)
-- [Known Limitations](#known-limitations)
-- [Contributing](#contributing)
-- [Support](#support)
-
----
-
-## ✨ Features
-
-### Core Functionality
-
-- **📅 Booking Management**: Create, modify, and manage reservations with automatic conflict detection
-- **🏠 Room Management**: Track rooms by type, status, floor, and availability
-- **👥 Guest Management**: Searchable guest database with profiles and booking history
-- **📊 Tape Chart (Visual Calendar)**: Drag-and-drop booking visualization by room across dates
-- **🧹 Housekeeping Module**: Task management with mobile-friendly interface for cleaning staff
-- **💰 Folio & Billing**: Track charges, post to guest accounts, and manage payments
-- **🛒 POS Integration**: Quick charge posting for additional services (restaurant, spa, laundry, etc.)
-- **📄 Invoice Generation**: Automatic PDF invoicing for guest folios
-- **💌 Guest Communications**: Automated emails for booking confirmation, pre-arrival welcome, and post-departure receipts
-- **📈 Dynamic Pricing**: Nightly rate calculations with weekend surcharges and occupancy-based yield management
-- **📉 Reporting**: Occupancy, revenue, room performance, and guest statistics dashboards
-- **🔐 Role-Based Access Control**: Admin, Manager, Front Desk, Housekeeping, and POS staff roles
-- **⚡ Real-Time Updates**: Live notifications via Laravel Broadcasting (Pusher/Soketi)
-
----
-
-## 🛠️ Tech Stack
-
-| Layer | Technology | Purpose |
-|-------|-----------|---------|
-| **Backend** | PHP 8.2 + Laravel 10 | RESTful API, business logic |
-| **Frontend** | React 18 + Vite | Modern UI, fast builds |
-| **State Management** | Zustand | Lightweight, performant store |
-| **Database** | MySQL 8 | Data persistence |
-| **Real-Time** | Laravel Broadcasting + Pusher/Soketi | Live updates |
-| **Email** | Laravel Mail + Mailtrap/Mailgun | Guest communications |
-| **PDF Generation** | DomPDF | Invoice generation |
-| **UI Components** | Tailwind CSS + Headless UI | Styling and form components |
-| **HTTP Client** | Axios | API requests |
-| **Deployment** | Ubuntu VPS (DigitalOcean/AWS) + Nginx | Production hosting |
-
----
-
-## 🚀 Getting Started
-
-### Prerequisites
-
-- **PHP**: 8.2+
-- **Node.js**: 18+ (for frontend development)
-- **MySQL**: 8.0+ or compatible database
-- **Composer**: Latest version
-- **Git**: For version control
-- **npm or yarn**: Node package manager
-
-### Installation
-
-#### 1. Clone the Repository
-
-```bash
-git clone https://github.com/Pkiachian/StaySync-HMS.git
-cd StaySync-HMS
-```
-
-#### 2. Backend Setup (Laravel API)
-
-```bash
-# Navigate to backend directory
-cd backend  # or wherever Laravel files are located
-
-# Install dependencies
-composer install
-
-# Copy environment file
-cp .env.example .env
-
-# Generate application key
-php artisan key:generate
-
-# Configure database in .env
-# Edit .env and set:
-# DB_DATABASE=staysync_db
-# DB_USERNAME=root
-# DB_PASSWORD=
-
-# Install additional packages
-composer require laravel/sanctum
-composer require pusher/pusher-php-server
-composer require barryvdh/laravel-dompdf
-
-# Generate API token secret
-php artisan vendor:publish --provider="Laravel\Sanctum\SanctumServiceProvider"
-```
-
-#### 3. Frontend Setup (React)
-
-```bash
-# Navigate to frontend directory
-cd ../frontend  # or wherever React files are located
-
-# Install dependencies
-npm install
-
-# Create .env file for React
-cat > .env << EOF
-VITE_API_BASE_URL=http://localhost:8000
-VITE_PUSHER_APP_KEY=your_pusher_key
-VITE_PUSHER_APP_CLUSTER=mt1
-EOF
-```
-
-### Database Setup
-
-```bash
-cd backend  # if not already there
-
-# Run migrations
-php artisan migrate
-
-# Seed the database with sample data
-php artisan db:seed
-
-# Verify with:
-php artisan tinker
-# Then: DB::table('users')->get();
-```
-
-**Sample Data Created:**
-- 4 Room Types (Standard, Deluxe, Suite, Presidential)
-- 20 Rooms distributed across types and floors
-- 5 Sample Guests
-- 1 Admin User (email: `admin@staysync.com`, password: `password`)
-- 1 User per role (front desk, housekeeping, pos_staff, manager)
-
-### Running the Application
-
-#### Terminal 1: Laravel Backend
-
-```bash
-cd backend
-php artisan serve
-# Runs at http://localhost:8000
-```
-
-#### Terminal 2: React Frontend
-
-```bash
-cd frontend
-npm run dev
-# Runs at http://localhost:5173
-```
-
-#### Terminal 3 (Optional): Laravel Queue Worker
-
-```bash
-cd backend
-php artisan queue:work  # For email processing
-```
-
-#### Terminal 4 (Optional): Laravel Scheduler
-
-```bash
-cd backend
-php artisan schedule:work  # For scheduled tasks (pre-arrival emails, housekeeping auto-tasks)
-```
-
-### First Login
-
-1. Open http://localhost:5173 in your browser
-2. Click "Login"
-3. Use credentials from seeder:
-   - **Email**: `admin@staysync.com`
-   - **Password**: `password`
-4. You'll be redirected to the Dashboard
-
----
-
-## 📁 Project Structure
-
-```
-StaySync-HMS/
-├── backend/                      # Laravel API
-│   ├── app/
-│   │   ├── Http/
-│   │   │   ├── Controllers/
-│   │   │   │   ├── AuthController.php
-│   │   │   │   ├── BookingController.php
-│   │   │   │   ├── RoomController.php
-│   │   │   │   ├── GuestController.php
-│   │   │   │   ├── HousekeepingController.php
-│   │   │   │   ├── FolioController.php
-│   │   │   │   ├── ReportController.php
-│   │   │   │   └── SettingsController.php
-│   │   │   ├── Requests/      # Form validation classes
-│   │   │   └── Resources/     # API response formatting
-│   │   ├── Models/            # Eloquent models
-│   │   ├── Services/          # Business logic
-│   │   │   ├── BookingService.php
-│   │   │   ├── PricingEngine.php
-│   │   │   ├── RoomStatusService.php
-│   │   │   └── FolioService.php
-│   │   ├── Events/            # Real-time events
-│   │   ├── Mail/              # Email templates (PHP/Blade)
-│   │   ├── Console/
-│   │   │   ├── Kernel.php     # Scheduled tasks
-│   │   │   └── Commands/
-│   │   └── Exceptions/
-│   ├── database/
-│   │   ├── migrations/        # Database schema
-│   │   └── seeders/           # Sample data
-│   ├── routes/
-│   │   └── api.php            # API routes
-│   ├── resources/views/       # Blade templates (invoices, emails)
-│   ├── storage/
-│   └── tests/                 # Feature & unit tests
-│
-├── frontend/                      # React Vite App
-│   ├── src/
-│   │   ├── components/        # Reusable React components
-│   │   ├── pages/             # Page components (Dashboard, Bookings, etc.)
-│   │   ├── stores/            # Zustand stores
-│   │   │   ├── authStore.js
-│   │   │   ├── dashboardStore.js
-│   │   │   ├── bookingStore.js
-│   │   │   └── housekeepingStore.js
-│   │   ├── hooks/             # Custom React hooks
-│   │   ├── api/               # API client & services
-│   │   ├── utils/             # Utility functions
-│   │   ├── App.jsx
-│   │   └── main.jsx
-│   ├── public/                # Static assets
-│   ├── package.json
-│   └── vite.config.js
-│
-├── docs/                          # Documentation
-│   ├── API.md
-│   ├── DEPLOYMENT.md
-│   └── DATABASE_SCHEMA.md
-│
-├── Project_plan                   # 2-week sprint plan
-└── README.md                      # This file
-```
-
----
-
-## 🎯 Core Modules
-
-### 1. **Authentication & Authorization**
-- JWT-based API token authentication (Laravel Sanctum)
-- Role-based access control (RBAC)
-- User session management
-
-**Key Endpoints:**
-- `POST /api/login`
-- `POST /api/logout`
-- `GET /api/me`
-
-### 2. **Room Management**
-- Create, read, update, delete room types
-- Manage individual rooms with status tracking
-- View room availability for date ranges
-
-**Key Endpoints:**
-- `GET/POST /api/room-types`
-- `GET/POST/PUT/DELETE /api/rooms`
-- `PATCH /api/rooms/{id}/status`
-- `GET /api/rooms/availability`
-
-### 3. **Booking Management**
-- Create bookings with automatic conflict detection (pessimistic locking)
-- Modify booking dates or room assignments
-- Complete booking lifecycle (confirmed → checked-in → checked-out)
-- Support for walk-ins, cancellations, and no-shows
-
-**Key Endpoints:**
-- `GET/POST /api/bookings`
-- `GET/PUT /api/bookings/{id}`
-- `PATCH /api/bookings/{id}/check-in`
-- `PATCH /api/bookings/{id}/check-out`
-- `PATCH /api/bookings/{id}/cancel`
-
-### 4. **Guest Management**
-- Guest profiles with contact information
-- Search and filter guests
-- View booking history per guest
-
-**Key Endpoints:**
-- `GET/POST /api/guests`
-- `GET/PUT /api/guests/{id}`
-
-### 5. **Tape Chart (Visual Calendar)**
-- Room × Date matrix visualization
-- Color-coded booking blocks (by status)
-- Click-to-create new booking, click-to-view booking detail
-- Date range navigation
-
-**Key Endpoint:**
-- `GET /api/tape-chart?start_date=...&end_date=...`
-
-### 6. **Housekeeping Module**
-- Task assignment and tracking
-- Priority levels (low, normal, urgent)
-- Mobile-friendly interface for cleaning staff
-- Auto-generation of tasks on checkout
-
-**Key Endpoints:**
-- `GET/POST /api/housekeeping/tasks`
-- `PATCH /api/housekeeping/tasks/{id}`
-- `PATCH /api/housekeeping/tasks/{id}/complete`
-
-### 7. **Folio & Billing**
-- Track all charges posted to guest accounts
-- Post charges by category (room, restaurant, spa, minibar, laundry, etc.)
-- Record payments with multiple methods (cash, card, bank transfer, online)
-- Calculate outstanding balance
-
-**Key Endpoints:**
-- `GET /api/bookings/{id}/folio`
-- `POST /api/bookings/{id}/charges`
-- `POST /api/bookings/{id}/payments`
-
-### 8. **POS (Point of Sale)**
-- Quick charge posting interface
-- Search checked-in guests by name or room number
-- Categorized charges with notes
-
-**UI Route:** `/pos`
-
-### 9. **Invoicing**
-- Generate PDF invoices for guest folios
-- Itemized charges breakdown
-- Payment history
-- Professional layout with hotel branding
-
-**Key Endpoint:**
-- `GET /api/bookings/{id}/invoice`
-
-### 10. **Dynamic Pricing**
-- Base rate × number of nights calculation
-- Weekend surcharge (15% on Fri/Sat)
-- Occupancy-based yield management (surge pricing when occupancy > 85%)
-- Manual rate overrides per date
-
-**Key Endpoints:**
-- `GET /api/rates`
-- `POST/DELETE /api/rates/overrides`
-
-### 11. **Guest Communications**
-- Booking confirmation email
-- Pre-arrival welcome email (1 day before check-in)
-- Post-departure invoice email
-- Automated scheduling via Laravel's task scheduler
-
-**Email Templates:**
-- `BookingConfirmationMail`
-- `PreArrivalMail`
-- `PostDepartureMail`
-
-### 12. **Reporting & Analytics**
-- Occupancy rate calculations
-- Revenue tracking (daily/weekly/monthly)
-- Room type performance metrics
-- Guest statistics (top guests, repeat rate, average stay length)
-
-**Key Endpoints:**
-- `GET /api/reports/occupancy`
-- `GET /api/reports/revenue`
-- `GET /api/reports/room-type-performance`
-- `GET /api/reports/guest-statistics`
-
----
-
-## 📚 API Documentation
-
 ### Authentication
 
 All endpoints require the `Authorization` header with a Bearer token:
@@ -700,3 +303,78 @@ php artisan view:cache
 ---
 
 **Built with ❤️ by Alligator Mississipiensis**
+=======
+# React + TypeScript + Vite
+
+This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+
+Currently, two official plugins are available:
+
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+
+## React Compiler
+
+The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+
+## Expanding the ESLint configuration
+
+If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+
+```js
+export default defineConfig([
+  globalIgnores(['dist']),
+  {
+    files: ['**/*.{ts,tsx}'],
+    extends: [
+      // Other configs...
+
+      // Remove tseslint.configs.recommended and replace with this
+      tseslint.configs.recommendedTypeChecked,
+      // Alternatively, use this for stricter rules
+      tseslint.configs.strictTypeChecked,
+      // Optionally, add this for stylistic rules
+      tseslint.configs.stylisticTypeChecked,
+
+      // Other configs...
+    ],
+    languageOptions: {
+      parserOptions: {
+        project: ['./tsconfig.node.json', './tsconfig.app.json'],
+        tsconfigRootDir: import.meta.dirname,
+      },
+      // other options...
+    },
+  },
+])
+```
+
+You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+
+```js
+// eslint.config.js
+import reactX from 'eslint-plugin-react-x'
+import reactDom from 'eslint-plugin-react-dom'
+
+export default defineConfig([
+  globalIgnores(['dist']),
+  {
+    files: ['**/*.{ts,tsx}'],
+    extends: [
+      // Other configs...
+      // Enable lint rules for React
+      reactX.configs['recommended-typescript'],
+      // Enable lint rules for React DOM
+      reactDom.configs.recommended,
+    ],
+    languageOptions: {
+      parserOptions: {
+        project: ['./tsconfig.node.json', './tsconfig.app.json'],
+        tsconfigRootDir: import.meta.dirname,
+      },
+      // other options...
+    },
+  },
+])
+```
+>>>>>>> 12606fe (Initial commit)
