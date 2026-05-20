@@ -2,23 +2,27 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Setting;
 use Illuminate\Http\Request;
 
 class SettingsController extends Controller
 {
-    /**
-     * TODO: Return hotel, billing, email, and system settings.
-     */
     public function index()
     {
-        // TODO: Load settings from the database and return JSON.
+        return response()->json(Setting::orderBy('key')->pluck('value', 'key'));
     }
 
-    /**
-     * TODO: Update configurable HMS settings.
-     */
     public function update(Request $request)
     {
-        // TODO: Validate settings payload and persist changes.
+        $data = $request->validate([
+            'settings' => ['required', 'array'],
+            'settings.*' => ['nullable', 'string'],
+        ]);
+
+        foreach ($data['settings'] as $key => $value) {
+            Setting::updateOrCreate(['key' => $key], ['value' => $value]);
+        }
+
+        return $this->index();
     }
 }
