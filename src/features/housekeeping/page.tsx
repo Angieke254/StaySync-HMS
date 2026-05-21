@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   AlertCircle,
@@ -14,6 +14,8 @@ import {
 } from 'lucide-react';
 import { mockHousekeepingTasks, mockRoomGrid } from '@/lib/mockData';
 import { cn } from '@/lib/utils';
+import { type ApiHousekeepingTask } from '@/lib/protectedEndpoints';
+import { useHousekeepingStore } from '@/app/store/housekeepingStore';
 
 const STATUS_CONFIG = {
   dirty: { label: 'Dirty', bg: 'bg-red-100', text: 'text-red-600', dot: '#ef4444', icon: AlertCircle },
@@ -44,11 +46,43 @@ type Task = typeof mockHousekeepingTasks[number] & {
 
 type RoomGridStatus = keyof typeof ROOM_STATUS_CONFIG;
 
+function mapHousekeepingTask(task: ApiHousekeepingTask): Task {
+  const room = task.room;
+  const backendStatus = task.status;
+
+  return {
+    id: task.id,
+    room: room?.room_number ?? String(task.id),
+    type: room?.room_type?.name ?? room?.roomType?.name ?? 'Room',
+    floor: room?.floor ?? 0,
+    status: backendStatus === 'completed' ? 'clean' : backendStatus === 'in_progress' ? 'cleaning' : 'dirty',
+    priority: task.priority === 'urgent' ? 'high' : task.priority,
+    assignedTo: task.assignee?.name ?? null,
+    notes: task.notes ?? '',
+    updatedAt: task.updated_at ? new Date(task.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'now',
+  } as Task;
+}
+
 export default function HousekeepingPage() {
   const [tasks, setTasks] = useState<Task[]>(mockHousekeepingTasks as Task[]);
+  const apiTasks = useHousekeepingStore((state) => state.tasks);
+  const loadError = useHousekeepingStore((state) => state.error);
+  const fetchTasks = useHousekeepingStore((state) => state.fetchTasks);
+  const updateTask = useHousekeepingStore((state) => state.updateTask);
+  const completeTask = useHousekeepingStore((state) => state.completeTask);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<keyof typeof STATUS_CONFIG | 'all'>('all');
   const [selected, setSelected] = useState<Task | null>(null);
+
+  useEffect(() => {
+    void fetchTasks();
+  }, [fetchTasks]);
+
+  useEffect(() => {
+    if (apiTasks.length > 0) {
+      setTasks(apiTasks.map(mapHousekeepingTask));
+    }
+  }, [apiTasks]);
 
   const filtered = tasks.filter((task) => {
     const normalizedSearch = search.toLowerCase();
@@ -64,11 +98,23 @@ export default function HousekeepingPage() {
     inspected: tasks.filter((task) => task.status === 'inspected').length,
   }), [tasks]);
 
-  const updateStatus = (id: number, status: keyof typeof STATUS_CONFIG) => {
+  const updateStatus = async (id: number, status: keyof typeof STATUS_CONFIG) => {
     const updatedAt = new Date().toLocaleTimeString([], {
       hour: '2-digit',
       minute: '2-digit',
     });
+
+    try {
+      if (status === 'clean' || status === 'inspected') {
+        await completeTask(id);
+      } else {
+        await updateTask(id, {
+          status: status === 'cleaning' ? 'in_progress' : 'pending',
+        });
+      }
+    } catch {
+      // Store already exposes the backend error; keep local optimistic status for responsiveness.
+    }
 
     setTasks((prev) => prev.map((task) => (
       task.id === id
@@ -100,6 +146,12 @@ export default function HousekeepingPage() {
         <h2 className="text-xl font-bold text-white drop-shadow">Housekeeping</h2>
         <p className="text-white/70 text-sm">Room cleaning and maintenance status</p>
       </div>
+
+      {loadError && (
+        <div className="rounded-xl bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700">
+          {loadError}
+        </div>
+      )}
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus, Search, Filter, Eye, Edit, X, Printer,
@@ -7,6 +7,8 @@ import {
   Hash, Users, Baby, FileText, ChevronDown,UserCheck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { type ApiBooking } from '@/lib/protectedEndpoints';
+import { useBookingsApiStore } from '@/app/store/bookingsApiStore';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Booking {
@@ -43,6 +45,39 @@ const INITIAL_BOOKINGS: Booking[] = [
   { id: 'SS-007', guestName: 'David Kimani',   phone: '+254778901234', email: 'david@email.com',  idNumber: 'KE678901', checkIn: '2026-05-21', checkOut: '2026-05-25', adults: 2, children: 0, roomType: 'Penthouse',     roomNumber: '401', roomPrice: 30000, totalAmount: 120000,deposit: 60000, taxes: 10800, paymentMethod: 'Bank Transfer',paymentStatus: 'partial', bookingStatus: 'confirmed',   specialRequests: 'Airport pickup needed',    createdAt: '2026-05-14' },
   { id: 'SS-008', guestName: 'Sandra Achieng', phone: '+254789012345', email: 'sandra@email.com', idNumber: 'KE789012', checkIn: '2026-05-19', checkOut: '2026-05-22', adults: 1, children: 0, roomType: 'Deluxe King',   roomNumber: '202', roomPrice: 12000, totalAmount: 36000, deposit: 0,     taxes: 3240,  paymentMethod: 'Mpesa',       paymentStatus: 'unpaid',  bookingStatus: 'cancelled',   specialRequests: '',                          createdAt: '2026-05-13' },
 ];
+
+function mapApiBooking(booking: ApiBooking): Booking {
+  const guestName = [booking.guest?.first_name, booking.guest?.last_name].filter(Boolean).join(' ') || 'Guest';
+  const roomType = booking.room?.room_type ?? booking.room?.roomType;
+  const checkIn = String(booking.check_in_date).slice(0, 10);
+  const checkOut = String(booking.check_out_date).slice(0, 10);
+  const roomPrice = Number(roomType?.base_rate ?? booking.subtotal ?? 0);
+  const totalAmount = Number(booking.total_price ?? 0);
+  const taxes = Number(booking.tax_amount ?? 0);
+
+  return {
+    id: booking.booking_reference,
+    guestName,
+    phone: booking.guest?.phone ?? '',
+    email: booking.guest?.email ?? '',
+    idNumber: '',
+    checkIn,
+    checkOut,
+    adults: booking.num_adults ?? 1,
+    children: booking.num_children ?? 0,
+    roomType: roomType?.name ?? 'Room',
+    roomNumber: booking.room?.room_number ?? '',
+    roomPrice,
+    totalAmount,
+    deposit: 0,
+    taxes,
+    paymentMethod: '',
+    paymentStatus: 'unpaid',
+    bookingStatus: booking.status,
+    specialRequests: booking.special_requests ?? '',
+    createdAt: checkIn,
+  };
+}
 
 const ROOM_TYPES = ['Standard King', 'Deluxe King', 'Deluxe Twin', 'Suite', 'Penthouse'];
 const AVAILABLE_ROOMS: Record<string, string[]> = {
@@ -96,6 +131,9 @@ function calcNights(checkIn: string, checkOut: string) {
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function BookingsPage() {
   const [bookings, setBookings]         = useState<Booking[]>(INITIAL_BOOKINGS);
+  const apiBookings = useBookingsApiStore((state) => state.bookings);
+  const loadError = useBookingsApiStore((state) => state.error);
+  const fetchBookings = useBookingsApiStore((state) => state.fetchBookings);
   const [search, setSearch]             = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [dateFilter, setDateFilter]     = useState('');
@@ -104,6 +142,16 @@ export default function BookingsPage() {
   const [viewBooking, setViewBooking]   = useState<Booking | null>(null);
   const [form, setForm]                 = useState(emptyForm);
   const [formError, setFormError]       = useState('');
+
+  useEffect(() => {
+    void fetchBookings();
+  }, [fetchBookings]);
+
+  useEffect(() => {
+    if (apiBookings.length > 0) {
+      setBookings(apiBookings.map(mapApiBooking));
+    }
+  }, [apiBookings]);
 
   // Derived values
   const nights      = calcNights(form.checkIn, form.checkOut);
@@ -205,6 +253,12 @@ export default function BookingsPage() {
           New Booking
         </button>
       </div>
+
+      {loadError && (
+        <div className="rounded-xl bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700">
+          {loadError}
+        </div>
+      )}
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

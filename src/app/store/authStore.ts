@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import api from '@/lib/api';
 import type { User } from '@/types';
 
 interface AuthState {
@@ -19,18 +20,20 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
       isLoading: false,
 
-      login: async (email, _password) => {
+      login: async (email, password) => {
         set({ isLoading: true });
         try {
-          await new Promise((r) => setTimeout(r, 600));
-          const user: User = {
-            id: 1,
-            name: 'Angela Atieno',
+          const response = await api.post('/login', {
             email,
-            role: email.includes('manager') ? 'manager' : 'receptionist',
-          };
-          const token = 'mock-jwt-token-123';
+            password,
+          });
+
+          const { token, user } = response.data as { token: string; user: User };
+
+          localStorage.setItem('token', token);
           localStorage.setItem('auth_token', token);
+          localStorage.setItem('user', JSON.stringify(user));
+
           set({ user, token, isAuthenticated: true, isLoading: false });
         } catch (err) {
           set({ isLoading: false });
@@ -39,7 +42,9 @@ export const useAuthStore = create<AuthState>()(
       },
 
       logout: () => {
+        localStorage.removeItem('token');
         localStorage.removeItem('auth_token');
+        localStorage.removeItem('user');
         set({ user: null, token: null, isAuthenticated: false });
       },
     }),
