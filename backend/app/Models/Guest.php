@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Guest extends Model
 {
@@ -19,20 +18,11 @@ class Guest extends Model
         'country',
         'notes',
         'loyalty_tier',
-        'total_stays',
+        'total_stays'
     ];
 
-    protected $casts = [
-        'total_stays' => 'integer',
-    ];
-
-    public function bookings(): HasMany
+    public function bookings()
     {
         return $this->hasMany(Booking::class);
-    }
-
-    public function getFullNameAttribute(): string
-    {
-        return trim("{$this->first_name} {$this->last_name}");
     }
 }

@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class FolioCharge extends Model
 {
@@ -13,24 +12,11 @@ class FolioCharge extends Model
         'description',
         'amount',
         'posted_by',
-        'charged_at',
-        'voided_at',
-        'voided_by',
+        'charged_at'
     ];
 
-    protected $casts = [
-        'amount' => 'decimal:2',
-        'charged_at' => 'datetime',
-        'voided_at' => 'datetime',
-    ];
-
-    public function booking(): BelongsTo
+    public function booking()
     {
         return $this->belongsTo(Booking::class);
-    }
-
-    public function postedBy(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'posted_by');
     }
 }

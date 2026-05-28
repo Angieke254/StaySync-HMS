@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class HousekeepingTask extends Model
 {
@@ -13,20 +12,16 @@ class HousekeepingTask extends Model
         'priority',
         'status',
         'notes',
-        'completed_at',
+        'completed_at'
     ];
 
-    protected $casts = [
-        'completed_at' => 'datetime',
-    ];
+    public function room()
+{
+    return $this->belongsTo(Room::class);
+}
 
-    public function room(): BelongsTo
-    {
-        return $this->belongsTo(Room::class);
-    }
-
-    public function assignee(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'assigned_to');
-    }
+public function assignedStaff()
+{
+    return $this->belongsTo(User::class, 'assigned_to');
+}
 }

@@ -4,14 +4,23 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\Response;
 
 class CheckRole
 {
-    public function handle(Request $request, Closure $next, string ...$roles)
+    public function handle(Request $request, Closure $next, $role): Response
     {
-        $user = $request->user();
+        if (!$request->user()) {
+            return response()->json([
+                'message' => 'Unauthenticated'
+            ], 401);
+        }
 
-        abort_if(!$user || !$user->hasAnyRole($roles), 403, 'You do not have permission to access this resource.');
+        if ($request->user()->role !== $role) {
+            return response()->json([
+                'message' => 'Access denied'
+            ], 403);
+        }
 
         return $next($request);
     }

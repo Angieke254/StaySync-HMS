@@ -3,8 +3,6 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Room extends Model
 {
@@ -13,29 +11,20 @@ class Room extends Model
         'room_number',
         'floor',
         'status',
-        'is_active',
+        'is_active'
     ];
 
-    protected $casts = [
-        'is_active' => 'boolean',
-    ];
-
-    public function roomType(): BelongsTo
+    public function roomType()
     {
         return $this->belongsTo(RoomType::class);
     }
 
-    public function bookings(): HasMany
+    public function bookings()
     {
         return $this->hasMany(Booking::class);
     }
 
-    public function statusLogs(): HasMany
-    {
-        return $this->hasMany(RoomStatusLog::class);
-    }
-
-    public function housekeepingTasks(): HasMany
+    public function housekeepingTasks()
     {
         return $this->hasMany(HousekeepingTask::class);
     }
