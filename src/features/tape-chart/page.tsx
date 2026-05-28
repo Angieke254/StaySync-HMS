@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { addDays, differenceInDays, format, isToday, isWeekend, startOfDay } from 'date-fns';
 import {
@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { mockArrivals, mockStats, mockTapeChartRooms } from '@/lib/mockData';
 import { cn } from '@/lib/utils';
+import { useTapeChartStore } from '@/app/store/tapeChartStore';
 
 const DAYS = 30;
 const ROW_HEIGHT = 56;
@@ -179,6 +180,10 @@ function Detail({ icon, label, value }: { icon: React.ReactNode; label: string; 
 
 export default function TapeChartPage() {
   const [startDate, setStartDate] = useState(() => startOfDay(new Date('2026-05-13')));
+  const [rooms, setRooms] = useState<Room[]>(mockTapeChartRooms);
+  const tapeChartData = useTapeChartStore((state) => state.data);
+  const loadError = useTapeChartStore((state) => state.error);
+  const fetchTapeChart = useTapeChartStore((state) => state.fetchTapeChart);
   const [selectedBooking, setSelectedBooking] = useState<{ booking: Booking; room: Room } | null>(null);
   const [roomTypeFilter, setRoomTypeFilter] = useState('all');
   const [floorFilter, setFloorFilter] = useState('all');
@@ -186,10 +191,38 @@ export default function TapeChartPage() {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const dates = Array.from({ length: DAYS }, (_, i) => addDays(startDate, i));
-  const roomTypes = Array.from(new Set(mockTapeChartRooms.map((room) => room.type_name)));
-  const floorOptions = Array.from(new Set(mockTapeChartRooms.map((room) => room.floor))).sort();
+  const roomTypes = Array.from(new Set(rooms.map((room) => room.type_name)));
+  const floorOptions = Array.from(new Set(rooms.map((room) => room.floor))).sort();
 
-  const filteredRooms = mockTapeChartRooms.filter((room) => {
+  useEffect(() => {
+    const endDate = addDays(startDate, DAYS - 1);
+
+    void fetchTapeChart(format(startDate, 'yyyy-MM-dd'), format(endDate, 'yyyy-MM-dd'));
+  }, [fetchTapeChart, startDate]);
+
+  useEffect(() => {
+    if (!tapeChartData) return;
+
+    setRooms(tapeChartData.rooms.map((room) => ({
+      id: room.id,
+      number: room.room_number,
+      floor: room.floor,
+      type_name: room.room_type,
+      status: 'available',
+      bookings: room.bookings.map((booking) => ({
+        id: booking.id,
+        reference: `SS-${booking.id}`,
+        guest_name: booking.guest_name,
+        room_id: room.id,
+        check_in: booking.check_in,
+        check_out: booking.check_out,
+        status: booking.status,
+        nights: Math.max(1, differenceInDays(new Date(booking.check_out), new Date(booking.check_in))),
+      })),
+    })));
+  }, [tapeChartData]);
+
+  const filteredRooms = rooms.filter((room) => {
     const matchesType = roomTypeFilter === 'all' || room.type_name === roomTypeFilter;
     const matchesFloor = floorFilter === 'all' || String(room.floor) === floorFilter;
     const matchesStatus = statusFilter === 'all' || room.status === statusFilter || room.bookings.some((booking) => booking.status === statusFilter);
@@ -252,6 +285,12 @@ export default function TapeChartPage() {
           </button>
         </div>
       </div>
+
+      {loadError && (
+        <div className="rounded-xl bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700">
+          {loadError}
+        </div>
+      )}
 
       <div className="flex flex-col gap-3 rounded-2xl bg-white/90 p-4 shadow-sm backdrop-blur">
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">

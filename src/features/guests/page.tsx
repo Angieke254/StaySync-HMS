@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   BadgeCheck,
   CalendarDays,
@@ -17,8 +17,10 @@ import {
   Users,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { type ApiGuest } from '@/lib/protectedEndpoints';
+import { useGuestStore } from '@/app/store/guestStore';
 
-const guests = [
+const INITIAL_GUESTS = [
   {
     guestId: 'GST-001',
     fullName: 'James Odhiambo',
@@ -146,6 +148,41 @@ const guests = [
   },
 ];
 
+type GuestRow = typeof INITIAL_GUESTS[number];
+
+function mapApiGuest(guest: ApiGuest): GuestRow {
+  const latestBooking = guest.bookings?.[0];
+  const room = latestBooking?.room;
+  const roomType = room?.room_type ?? room?.roomType;
+  const fullName = [guest.first_name, guest.last_name].filter(Boolean).join(' ') || 'Guest';
+
+  return {
+    guestId: `GST-${String(guest.id).padStart(3, '0')}`,
+    fullName,
+    gender: '',
+    nationality: guest.country ?? '',
+    phone: guest.phone ?? '',
+    email: guest.email ?? '',
+    idNumber: guest.id_number ?? '',
+    address: guest.address ?? '',
+    bookingId: latestBooking?.booking_reference ?? '',
+    roomNumber: room?.room_number ?? '',
+    roomType: roomType?.name ?? '',
+    checkIn: latestBooking?.check_in_date ? String(latestBooking.check_in_date).slice(0, 10) : '',
+    checkOut: latestBooking?.check_out_date ? String(latestBooking.check_out_date).slice(0, 10) : '',
+    numberOfGuests: (latestBooking?.num_adults ?? 1) + (latestBooking?.num_children ?? 0),
+    bookingStatus: latestBooking?.status ?? 'reserved',
+    paymentStatus: 'pending',
+    amountPaid: 0,
+    balance: Number(latestBooking?.total_price ?? 0),
+    paymentMethod: 'Pending',
+    stayHistory: guest.total_stays ?? 0,
+    previousBookings: guest.bookings?.map((booking) => booking.booking_reference).filter(Boolean) ?? [],
+    vip: (guest.total_stays ?? 0) >= 5,
+    notes: '',
+  };
+}
+
 const BOOKING_STATUS_STYLES: Record<string, string> = {
   checked_in: 'bg-emerald-100 text-emerald-700',
   reserved: 'bg-blue-100 text-blue-700',
@@ -185,8 +222,22 @@ function StatCard({ label, value, icon, className }: { label: string; value: str
 }
 
 export default function GuestsPage() {
+  const [guests, setGuests] = useState<GuestRow[]>(INITIAL_GUESTS);
+  const apiGuests = useGuestStore((state) => state.guests);
+  const loadError = useGuestStore((state) => state.error);
+  const fetchGuests = useGuestStore((state) => state.fetchGuests);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+
+  useEffect(() => {
+    void fetchGuests();
+  }, [fetchGuests]);
+
+  useEffect(() => {
+    if (apiGuests.length > 0) {
+      setGuests(apiGuests.map(mapApiGuest));
+    }
+  }, [apiGuests]);
 
   const filteredGuests = guests.filter((guest) => {
     const query = search.toLowerCase();
@@ -205,7 +256,7 @@ export default function GuestsPage() {
     todayCheckIns: guests.filter((guest) => guest.checkIn === '2026-05-20').length,
     todayCheckOuts: guests.filter((guest) => guest.checkOut === '2026-05-20').length,
     vip: guests.filter((guest) => guest.vip).length,
-  }), []);
+  }), [guests]);
 
   return (
     <div className="p-5 space-y-5 min-h-screen">
@@ -219,6 +270,12 @@ export default function GuestsPage() {
           Add New Guest
         </button>
       </div>
+
+      {loadError && (
+        <div className="rounded-xl bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700">
+          {loadError}
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
         <StatCard label="Total Guests" value={stats.total} icon={<Users className="w-5 h-5" />} className="bg-gradient-to-br from-blue-500 to-indigo-700" />

@@ -2,91 +2,28 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
-  AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  BarChart, Bar, PieChart, Pie, Cell,
-} from 'recharts';
-import {
-  BedDouble, LogIn, LogOut, DollarSign, AlertCircle,
-  Sparkles, ArrowUpRight, Bell, CheckCircle, Wrench,
+  LogOut, AlertCircle,
+  Sparkles, Bell, CheckCircle, Wrench,
   Info, Plus, UserCheck, UserX, FileText, Calendar,
-  Sun, Moon, User, ChevronDown, X, Menu,
+  Sun, Moon, ChevronDown, X, Menu,
 } from 'lucide-react';
 import {
-  mockStats, mockOccupancyWeek, mockMonthlyRevenue,
-  mockRoomStatus, mockRecentBookings, mockArrivals,
-  mockNotifications, mockRoomGrid,
+  mockStats, mockArrivals, mockNotifications,
 } from '@/lib/mockData';
 import { HotelSlideshow } from '@/components/common/HotelSlideshow';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { useAuthStore } from '@/app/store/authStore';
+import { useDashboardStore } from '@/app/store/dashboardStore';
 import { useUIStore } from '@/app/store/uiStore';
 
 const fadeUp = { hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0, transition: { duration: 0.4 } } };
-const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.07 } } };
-
-const STATUS_STYLES: Record<string, string> = {
-  confirmed:   'bg-blue-100 text-blue-700',
-  checked_in:  'bg-green-100 text-green-700',
-  checked_out: 'bg-gray-100 text-gray-500',
-  cancelled:   'bg-red-100 text-red-600',
-  pending:     'bg-yellow-100 text-yellow-700',
-};
-
-function StatusBadge({ status }: { status: string }) {
-  return (
-    <span className={cn('px-2 py-0.5 rounded-full text-xs font-medium capitalize', STATUS_STYLES[status] ?? 'bg-gray-100')}>
-      {status.replace('_', ' ')}
-    </span>
-  );
-}
-
-const ROOM_COLORS: Record<string, { bg: string; label: string }> = {
-  occupied:    { bg: '#3b82f6', label: 'Occupied'    },
-  available:   { bg: '#22c55e', label: 'Available'   },
-  cleaning:    { bg: '#f59e0b', label: 'Cleaning'    },
-  maintenance: { bg: '#ef4444', label: 'Maintenance' },
-  dirty:       { bg: '#f97316', label: 'Dirty'       },
-};
 
 function NotifIcon({ type }: { type: string }) {
   if (type === 'warning') return <AlertCircle className="w-4 h-4 text-amber-500" />;
   if (type === 'error')   return <Wrench      className="w-4 h-4 text-red-500"   />;
   if (type === 'success') return <CheckCircle className="w-4 h-4 text-green-500" />;
   return <Info className="w-4 h-4 text-blue-500" />;
-}
-
-interface KPICardProps {
-  label: string;
-  value: string | number;
-  sub?: string;
-  icon: React.ReactNode;
-  gradient: string;
-  onClick?: () => void;
-}
-
-function KPICard({ label, value, sub, icon, gradient, onClick }: KPICardProps) {
-  return (
-    <motion.div
-      variants={fadeUp}
-      whileHover={{ scale: 1.03, y: -2 }}
-      onClick={onClick}
-      className={cn('rounded-2xl p-5 text-white shadow-lg relative overflow-hidden cursor-pointer', gradient)}
-    >
-      <div className="absolute -right-4 -top-4 w-24 h-24 rounded-full bg-white/10" />
-      <div className="relative z-10">
-        <div className="flex items-center justify-between mb-4">
-          <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
-            {icon}
-          </div>
-          <ArrowUpRight className="w-4 h-4 text-white/50" />
-        </div>
-        <p className="text-3xl font-bold">{value}</p>
-        <p className="text-white/80 text-sm mt-1">{label}</p>
-        {sub && <p className="text-white/60 text-xs mt-0.5">{sub}</p>}
-      </div>
-    </motion.div>
-  );
 }
 
 function LiveClock() {
@@ -112,7 +49,24 @@ export default function DashboardPage() {
   const [notifOpen, setNotifOpen]     = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [notifications, setNotifications] = useState(mockNotifications);
+  const dashboardStats = useDashboardStore((state) => state.stats);
+  const dashboardError = useDashboardStore((state) => state.error);
+  const fetchStats = useDashboardStore((state) => state.fetchStats);
   const unread = notifications.length;
+
+  useEffect(() => {
+    void fetchStats();
+  }, [fetchStats]);
+
+  const liveStats = {
+    occupancyRate: dashboardStats?.rooms.occupancy_rate ?? mockStats.occupancyRate,
+    totalRooms: dashboardStats?.rooms.total ?? mockStats.totalRooms,
+    occupiedRooms: dashboardStats?.rooms.occupied ?? mockStats.occupiedRooms,
+    availableRooms: dashboardStats?.rooms.available ?? mockStats.availableRooms,
+    checkInsToday: dashboardStats?.today.check_ins ?? mockStats.checkInsToday,
+    checkOutsToday: dashboardStats?.today.check_outs ?? mockStats.checkOutsToday,
+    revenueToday: dashboardStats?.today.revenue ?? mockStats.revenueToday,
+  };
 
   const greeting = () => {
     const h = new Date().getHours();
@@ -264,6 +218,11 @@ export default function DashboardPage() {
         {/* Welcome Banner */}
         <motion.div variants={fadeUp} initial="hidden" animate="show"
           className="rounded-2xl bg-white/90 backdrop-blur-md shadow-lg p-6 border border-white/50">
+          {dashboardError && (
+            <div className="mb-4 rounded-xl bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700">
+              {dashboardError}
+            </div>
+          )}
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div>
               <h2 className="text-2xl font-bold text-gray-800">
@@ -279,7 +238,7 @@ export default function DashboardPage() {
               </div>
             </div>
             <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl px-6 py-3 border border-blue-100 text-right">
-              <p className="text-4xl font-bold text-blue-600">{mockStats.occupancyRate}%</p>
+              <p className="text-4xl font-bold text-blue-600">{liveStats.occupancyRate}%</p>
               <p className="text-gray-400 text-sm">Occupancy Rate</p>
               <p className="text-xs text-green-500 font-medium mt-0.5">↑ 12% vs yesterday</p>
             </div>
@@ -290,13 +249,13 @@ export default function DashboardPage() {
               <motion.div
                 className="h-full bg-gradient-to-r from-blue-400 via-blue-500 to-indigo-600 rounded-full"
                 initial={{ width: 0 }}
-                animate={{ width: `${mockStats.occupancyRate}%` }}
+                animate={{ width: `${liveStats.occupancyRate}%` }}
                 transition={{ duration: 1.5, ease: 'easeOut', delay: 0.3 }}
               />
             </div>
             <div className="flex justify-between mt-1.5 text-xs text-gray-400">
-              <span>{mockStats.occupiedRooms} occupied</span>
-              <span>{mockStats.availableRooms} available of {mockStats.totalRooms}</span>
+              <span>{liveStats.occupiedRooms} occupied</span>
+              <span>{liveStats.availableRooms} available of {liveStats.totalRooms}</span>
             </div>
           </div>
 

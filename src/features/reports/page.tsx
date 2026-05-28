@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import {
   Area,
   AreaChart,
@@ -37,6 +38,7 @@ import {
   mockStats,
 } from '@/lib/mockData';
 import { cn } from '@/lib/utils';
+import { useReportStore } from '@/app/store/reportStore';
 
 const bookingTrend = [
   { day: 'Mon', completed: 18, pending: 6, cancelled: 2 },
@@ -90,6 +92,9 @@ function SectionCard({ title, subtitle, icon, children, className }: { title: st
 }
 
 export default function ReportsPage() {
+  const reportData = useReportStore((state) => state.reports);
+  const loadError = useReportStore((state) => state.error);
+  const fetchReports = useReportStore((state) => state.fetchReports);
   const completedBookings = mockRecentBookings.filter((booking) => booking.status === 'checked_in' || booking.status === 'checked_out').length;
   const pendingBookings = mockRecentBookings.filter((booking) => booking.status === 'pending' || booking.status === 'confirmed').length;
   const cancelledBookings = 2;
@@ -97,6 +102,23 @@ export default function ReportsPage() {
   const newGuests = mockGuests.length - returningGuests;
   const maintenanceRooms = mockRoomGrid.filter((room) => room.status === 'maintenance').length;
   const mostBookedRooms = ['204', '301', '205'];
+  const liveRevenue = Array.isArray(reportData?.revenue)
+    ? reportData.revenue.reduce((sum: number, row: { revenue?: string | number }) => sum + Number(row.revenue ?? 0), 0)
+    : mockStats.revenueToday;
+  const liveOccupancy = Array.isArray(reportData?.occupancy) && reportData.occupancy.length > 0
+    ? Number(reportData.occupancy.at(-1)?.occupancy_percentage ?? mockStats.occupancyRate)
+    : mockStats.occupancyRate;
+  const liveRoomTypes = Array.isArray(reportData?.room_type_performance)
+    ? reportData.room_type_performance
+    : revenueByRoomType.map((item) => ({ name: item.type, revenue: item.revenue }));
+
+  useEffect(() => {
+    const now = new Date();
+    const startDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
+    const endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10);
+
+    void fetchReports(startDate, endDate, 'day');
+  }, [fetchReports]);
 
   return (
     <div className="p-5 space-y-5 min-h-screen">
@@ -120,6 +142,12 @@ export default function ReportsPage() {
           </button>
         </div>
       </div>
+
+      {loadError && (
+        <div className="rounded-xl bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700">
+          {loadError}
+        </div>
+      )}
 
       <div className="rounded-2xl bg-white p-4 shadow-sm">
         <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
@@ -164,7 +192,7 @@ export default function ReportsPage() {
       </div>
 
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-        <ReportCard label="Daily Revenue" value={`KES ${mockStats.revenueToday.toLocaleString()}`} sub="Today" icon={<TrendingUp className="w-5 h-5" />} className="bg-gradient-to-br from-blue-600 to-indigo-700" />
+        <ReportCard label="Daily Revenue" value={`KES ${liveRevenue.toLocaleString()}`} sub="Selected period" icon={<TrendingUp className="w-5 h-5" />} className="bg-gradient-to-br from-blue-600 to-indigo-700" />
         <ReportCard label="Weekly Revenue" value="KES 1.42M" sub="Last 7 days" icon={<BarChart3 className="w-5 h-5" />} className="bg-gradient-to-br from-emerald-500 to-teal-700" />
         <ReportCard label="Monthly Revenue" value="KES 1.68M" sub="May performance" icon={<Receipt className="w-5 h-5" />} className="bg-gradient-to-br from-amber-500 to-orange-700" />
         <ReportCard label="Yearly Revenue" value="KES 8.42M" sub="Year to date" icon={<Download className="w-5 h-5" />} className="bg-gradient-to-br from-slate-600 to-slate-900" />
@@ -252,7 +280,7 @@ export default function ReportsPage() {
             <p className="flex justify-between"><span>Completed</span><strong>{completedBookings}</strong></p>
             <p className="flex justify-between"><span>Cancelled</span><strong>{cancelledBookings}</strong></p>
             <p className="flex justify-between"><span>Pending</span><strong>{pendingBookings}</strong></p>
-            <p className="flex justify-between"><span>Occupancy Rate</span><strong>{mockStats.occupancyRate}%</strong></p>
+            <p className="flex justify-between"><span>Occupancy Rate</span><strong>{liveOccupancy}%</strong></p>
           </div>
         </SectionCard>
 
@@ -276,14 +304,14 @@ export default function ReportsPage() {
 
         <SectionCard title="Revenue by Room Type" subtitle="Top earning room categories" icon={<Receipt className="w-4 h-4" />}>
           <div className="space-y-3">
-            {revenueByRoomType.map((item) => (
-              <div key={item.type}>
+            {liveRoomTypes.map((item: { name?: string; type?: string; revenue?: number | string }) => (
+              <div key={item.name ?? item.type}>
                 <div className="mb-1 flex justify-between text-sm">
-                  <span className="text-gray-600">{item.type}</span>
-                  <strong className="text-gray-800">KES {item.revenue.toLocaleString()}</strong>
+                  <span className="text-gray-600">{item.name ?? item.type}</span>
+                  <strong className="text-gray-800">KES {Number(item.revenue ?? 0).toLocaleString()}</strong>
                 </div>
                 <div className="h-2 rounded-full bg-gray-100">
-                  <div className="h-full rounded-full bg-blue-500" style={{ width: `${Math.min((item.revenue / 700000) * 100, 100)}%` }} />
+                  <div className="h-full rounded-full bg-blue-500" style={{ width: `${Math.min((Number(item.revenue ?? 0) / 700000) * 100, 100)}%` }} />
                 </div>
               </div>
             ))}

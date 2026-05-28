@@ -1,0 +1,27 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+class HousekeepingTask extends Model
+{
+    protected $fillable = [
+        'room_id',
+        'assigned_to',
+        'priority',
+        'status',
+        'notes',
+        'completed_at'
+    ];
+
+    public function room()
+{
+    return $this->belongsTo(Room::class);
+}
+
+public function assignedStaff()
+{
+    return $this->belongsTo(User::class, 'assigned_to');
+}
+}

@@ -6,7 +6,7 @@ import { Hotel } from 'lucide-react';
 
 export default function LoginPage() {
   const { login, isAuthenticated, isLoading, user } = useAuthStore();
-  const [email, setEmail]       = useState('receptionist@hotel.com');
+  const [email, setEmail]       = useState('admin@staysync.com');
   const [password, setPassword] = useState('password');
   const [error, setError]       = useState('');
 
@@ -82,7 +82,7 @@ export default function LoginPage() {
               </button>
             </form>
             <p className="text-xs text-muted-foreground text-center mt-4">
-              Demo: any email/password works.
+              Use your backend user credentials.
             </p>
           </div>
         </div>
